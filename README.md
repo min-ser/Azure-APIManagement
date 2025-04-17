@@ -170,55 +170,72 @@
         </set-header>
         <!-- 'Test-Key' 필수 헤더 키 검증로직 -->
         <choose>
-            <!-- <when condition="@( !context.Request.Headers.ContainsKey("TEST-KEY"))"> -->
-            <when condition="@( !context.Request.Headers.ContainsKey("TEST-KEY"))">
+            <when condition="@(context.Request.Headers.ContainsKey("TEST-KEY"))">
+                <choose>
+                    <when condition="@(context.Request.Headers.GetValueOrDefault("TEST-KEY","") == "test")">
+                        <choose>
+                            <when condition="@(context.Request.Headers.ContainsKey("ContentSafety-check"))">
+                                <choose>
+                                    <when condition="@(context.Request.Headers.GetValueOrDefault("ContentSafety-check","") == "1")">
+                                        <return-response>
+                                            <set-status code="400" reason="Bad Request (KMS)" />
+                                            <set-header name="Content-Type" exists-action="override">
+                                                <value>application/json</value>
+                                            </set-header>
+                                            <set-body>{"error": "Content Safety 위반 1단계"}</set-body>
+                                        </return-response>
+                                    </when>
+                                    <when condition="@(context.Request.Headers.GetValueOrDefault("ContentSafety-check","") == "2")">
+                                        <return-response>
+                                            <set-status code="400" reason="Bad Request (KMS)" />
+                                            <set-header name="Content-Type" exists-action="override">
+                                                <value>application/json</value>
+                                            </set-header>
+                                            <set-body>{"error": "Content Safety 위반 2단계"}</set-body>
+                                        </return-response>
+                                    </when>
+                                    <otherwise>
+                                        <return-response>
+                                            <set-status code="400" reason="Bad Request (KMS)" />
+                                            <set-header name="Content-Type" exists-action="override">
+                                                <value>application/json</value>
+                                            </set-header>
+                                            <set-body>@(
+                                                "ContentSafety-check Header에 지정된값 외의 다른값이 인입됨\n"
+                                                +" Hate severity :"+context.Request.Headers.GetValueOrDefault("Hate-severity","") + "\n"
+                                                +" SelfHarm severity :"+context.Request.Headers.GetValueOrDefault("SelfHarm-severity","") + "\n"
+                                                +" Sexual severity :"+context.Request.Headers.GetValueOrDefault("Sexual-severity","") + "\n"
+                                                +" Violence severity :"+context.Request.Headers.GetValueOrDefault("Violence-severity","")
+                                                )</set-body>
+                                        </return-response>
+                                    </otherwise>
+                                </choose>
+                            </when>
+                            <otherwise>
+                                <!--# Content Safety를 안탐 code=200 -->
+                            </otherwise>
+                        </choose>
+                    </when>
+                    <otherwise>
+                        <return-response>
+                            <set-status code="400" reason="Bad Request (KMS)" />
+                            <set-header name="Content-Type" exists-action="override">
+                                <value>application/json</value>
+                            </set-header>
+                            <set-body>{"error": "TEST-KEY값이 잘못됨"}</set-body>
+                        </return-response>
+                    </otherwise>
+                </choose>
+            </when>
+            <otherwise>
                 <return-response>
                     <set-status code="400" reason="Bad Request (KMS)" />
                     <set-header name="Content-Type" exists-action="override">
                         <value>application/json</value>
                     </set-header>
-                    <set-body>{"error": "TEST-KEY값이 없음"}</set-body>
+                    <set-body>{"error": "TEST-KEY 값이 없음"}</set-body>
                 </return-response>
-            </when>
-            <when condition="@( 
-                    context.Request.Headers.ContainsKey("TEST-KEY") && 
-                    context.Request.Headers.GetValueOrDefault("TEST-KEY","") != "test"
-                    )">
-                <return-response>
-                    <set-status code="400" reason="Bad Request (KMS)" />
-                    <set-header name="Content-Type" exists-action="override">
-                        <value>application/json</value>
-                    </set-header>
-                    <set-body>{"error": "TEST-KEY값이 잘못됨"}</set-body>
-                </return-response>
-            </when>
-            <when condition="@( 
-                    context.Request.Headers.ContainsKey("TEST-KEY") &&
-                    context.Request.Headers.ContainsKey("CS") &&
-                    context.Request.Headers.GetValueOrDefault("CS","") == "1"
-                    )">
-                <return-response>
-                    <set-status code="400" reason="Bad Request (KMS)" />
-                    <set-header name="Content-Type" exists-action="override">
-                        <value>application/json</value>
-                    </set-header>
-                    <set-body>{"error": "Content Safety 위반 1단계"}</set-body>
-                </return-response>
-            </when>
-            <when condition="@( 
-                    context.Request.Headers.ContainsKey("TEST-KEY") &&
-                    context.Request.Headers.ContainsKey("CS") &&
-                    context.Request.Headers.GetValueOrDefault("CS","") == "2"
-                    )">
-                <return-response>
-                    <set-status code="400" reason="Bad Request (KMS)" />
-                    <set-header name="Content-Type" exists-action="override">
-                        <value>application/json</value>
-                    </set-header>
-                    <set-body>{"error": "Content Safety 위반 2단계"}</set-body>
-                </return-response>
-            </when>
-            <otherwise />
+            </otherwise>
         </choose>
         <!-- 
             PTU관련 접속 제한 설정
